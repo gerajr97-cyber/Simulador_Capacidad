@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simulador de Capacidad - Caso 2 Segunda Vida</title>
+  <style>
+    :root {
+      --bg: #f4f6f9;
+      --card: #ffffff;
+      --primary: #1e3a8a;
+      --accent: #2563eb;
+      --ok-bg: #dcfce7;
+      --ok-text: #166534;
+      --err-bg: #fee2e2;
+      --err-text: #991b1b;
+      --warn-bg: #fef3c7;
+      --warn-text: #92400e;
+      --border: #cbd5e1;
+      --text: #1e293b;
+    }
+    * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
+    body { background: var(--bg); color: var(--text); margin: 0; padding: 20px; line-height: 1.5; }
+    .container { max-width: 1150px; margin: 0 auto; }
+    header { background: var(--primary); color: #fff; padding: 20px; border-radius: 10px; margin-bottom: 16px; }
+    header h1 { margin: 0 0 6px 0; font-size: 1.4rem; }
+    header p { margin: 0; font-size: 0.9rem; opacity: 0.9; }
+    .banner-warn {
+      background: var(--warn-bg); color: var(--warn-text); border: 1px solid #f59e0b;
+      padding: 12px 16px; border-radius: 8px; font-weight: 700; margin-bottom: 20px;
+      text-align: center; font-size: 0.95rem;
+    }
+    .grid { display: grid; grid-template-columns: 340px 1fr; gap: 20px; }
+    @media (max-width: 850px) { .grid { grid-template-columns: 1fr; } }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 18px; margin-bottom: 16px; }
+    .card h2 { margin-top: 0; font-size: 1.1rem; color: var(--primary); border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+    .form-group { margin-bottom: 14px; }
+    label { display: block; font-weight: 600; font-size: 0.88rem; margin-bottom: 4px; }
+    input, select {
+      width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.95rem;
+    }
+    .btn-group { display: flex; gap: 8px; margin-top: 12px; }
+    button {
+      flex: 1; padding: 10px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.9rem;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-secondary { background: #e2e8f0; color: var(--text); }
+    .error-box {
+      background: var(--err-bg); color: var(--err-text); border: 1px solid #ef4444;
+      padding: 12px; border-radius: 8px; font-weight: 600; margin-bottom: 16px; display: none;
+    }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .kpi { background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+    .kpi .title { font-size: 0.78rem; text-transform: uppercase; color: #64748b; font-weight: 700; }
+    .kpi .val { font-size: 1.25rem; font-weight: 800; margin-top: 4px; color: var(--primary); }
+    .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; font-weight: 700; font-size: 0.85rem; }
+    .badge-ok { background: var(--ok-bg); color: var(--ok-text); }
+    .badge-err { background: var(--err-bg); color: var(--err-text); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin-top: 8px; }
+    th, td { border: 1px solid var(--border); padding: 8px; text-align: center; }
+    th { background: #f1f5f9; color: var(--primary); }
+    .highlight-row { background: #eff6ff; font-weight: 700; }
+    .formulas { font-size: 0.84rem; color: #475569; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid var(--border); }
+    code { background: #e2e8f0; padding: 2px 5px; border-radius: 4px; font-family: monospace; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Segunda Vida — Microherramienta de Planificación y Capacidad</h1>
+    <p>Evaluación determinista de flujo, cuellos de botella, factibilidad y coste incremental por turno.</p>
+  </header>
+
+  <div class="banner-warn">
+    ⚠️ ADVERTENCIA: «Modelo de medias; no garantiza la entrega de cada turno».
+  </div>
+
+  <div id="errorBox" class="error-box"></div>
+
+  <div class="grid">
+    <!-- Panel de Entradas -->
+    <div>
+      <div class="card">
+        <h2>1. Entradas del Modelo</h2>
+        <div class="form-group">
+          <label for="opcion">Opción de proceso:</label>
+          <select id="opcion">
+            <option value="REF">Referencia (Situación Actual)</option>
+            <option value="A" selected>Opción A · Organizador de limpieza</option>
+            <option value="B">Opción B · Cuarta persona y reasignación</option>
+            <option value="C">Opción C · Módulo preparado (Extensión)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="demanda">Demanda buena requerida (mandos/turno):</label>
+          <input type="number" id="demanda" value="196" step="1" min="0" />
+        </div>
+
+        <div class="form-group">
+          <label for="minutos">Tiempo neto disponible (minutos/turno):</label>
+          <input type="number" id="minutos" value="420" step="1" min="1" />
+        </div>
+
+        <div class="form-group">
+          <label for="r_mod">Proporción inicial ruta M (r ∈ [0, 1]):</label>
+          <input type="number" id="r_mod" value="0.30" step="0.01" min="0" max="1" />
+        </div>
+
+        <div class="form-group">
+          <label for="y_min">Rendimiento mínimo exigido (y_min ∈ [0, 1]):</label>
+          <input type="number" id="y_min" value="0.98" step="0.005" min="0" max="1" />
+        </div>
+
+        <div class="btn-group">
+          <button class="btn-primary" onclick="calcular()">Calcular</button>
+          <button class="btn-secondary" onclick="resetBase()">Escenario Base</button>
+        </div>
+      </div>
+
+      <div class="card formulas">
+        <strong>Fórmulas y Supuestos Expuestos:</strong>
+        <ul>
+          <li><code>TE = TN × 1.15</code> (Suplemento manual 15%).</li>
+          <li><code>TE_A = 34.50 s</code> | <code>TE_B = 96.60 s</code> (<code>82.80 s</code> en Alt A).</li>
+          <li><code>TE_C = 131.10 s</code> (<code>82.80 s</code> en Alt C) | <code>TE_E = 46.00 s</code>.</li>
+          <li><code>TE_Prueba = 34.50 + 60.00 = 94.50 s</code> (60 s banco sin suplemento).</li>
+          <li><code>Rendimiento Y = (1 - f1) + (f1 × 0.80)</code>, donde <code>f1 = 0.10</code> (o <code>0.02</code> en Alt C).</li>
+          <li><code>N_req = ceil(Demanda / Y)</code>. Restricción materia prima: <code>N_req ≤ 300</code>.</li>
+          <li><code>Cap_Entrada = floor((Minutos × 60) / max(Cargas))</code>.</li>
+          <li>Amortización de inversión fija en <strong>20 turnos</strong>.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Panel de Resultados -->
+    <div>
+      <div class="card">
+        <h2>2. Resultados de la Opción Seleccionada</h2>
+        <div class="kpi-grid">
+          <div class="kpi">
+            <div class="title">Estado / Factibilidad</div>
+            <div class="val" id="kpiFactible">-</div>
+          </div>
+          <div class="kpi">
+            <div class="title">Cuello de Botella</div>
+            <div class="val" id="kpiCuello">-</div>
+          </div>
+          <div class="kpi">
+            <div class="title">Capacidad Entrada / Buena</div>
+            <div class="val" id="kpiCap">-</div>
+          </div>
+          <div class="kpi">
+            <div class="title">N Requerido (Entradas)</div>
+            <div class="val" id="kpiNreq">-</div>
+          </div>
+          <div class="kpi">
+            <div class="title">Coste Incremental / Turno</div>
+            <div class="val" id="kpiCoste">-</div>
+          </div>
+          <div class="kpi">
+            <div class="title">Productividad (buenos/h-p)</div>
+            <div class="val" id="kpiProd">-</div>
+          </div>
+        </div>
+        <p id="motivoInviable" style="color: var(--err-text); font-weight: 600; margin: 4px 0 0 0;"></p>
+      </div>
+
+      <div class="card">
+        <h2>3. Árbol de Cantidades Esperadas (para N Requerido)</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Entradas (N)</th>
+              <th>Ruta L (1 - r)</th>
+              <th>Ruta M (r)</th>
+              <th>1ª Prueba</th>
+              <th>Retrabajo (f1)</th>
+              <th>Buenos Esperados</th>
+              <th>Descartes</th>
+              <th>Rendimiento (Y)</th>
+            </tr>
+          </thead>
+          <tbody id="tablaArbol"></tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2>4. Comparativa de Todas las Alternativas (Mismas Entradas)</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Alternativa</th>
+              <th>Cuello de Botella (s/ent)</th>
+              <th>Cap. Entrada</th>
+              <th>Salida Buena Max</th>
+              <th>Rend. (Y)</th>
+              <th>N Req.</th>
+              <th>Factible</th>
+              <th>Coste/Turno</th>
+            </tr>
+          </thead>
+          <tbody id="tablaComparativa"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Tiempos estándar constantes (segundos)
+  const TE_A = 34.50;
+  const TE_B_BASE = 96.60;
+  const TE_B_OPT_A = 82.80;
+  const TE_C_BASE = 131.10;
+  const TE_C_OPT_C = 82.80;
+  const TE_E = 46.00;
+  const TE_PRUEBA = 94.50; // 34.50 manual D + 60.00 banco
+  const MAX_DISPONIBLE = 300;
+  const TURNOS_AMORT = 20;
+
+  function evaluarAlternativa(cod, demanda, segNetos, r, yMin) {
+    let nombre = "";
+    let teB = TE_B_BASE;
+    let teC = TE_C_BASE;
+    let f1 = 0.10; // Tasa de primer fallo (independiente de r)
+    let personas = 3;
+    let invFija = 0;
+    let costeTurnoFijo = 0;
+    let costeVarEntrada = 0;
+
+    if (cod === "REF") {
+      nombre = "Referencia";
+    } else if (cod === "A") {
+      nombre = "Opción A (Organizador)";
+      teB = TE_B_OPT_A;
+      invFija = 250;
+    } else if (cod === "B") {
+      nombre = "Opción B (4ª Persona)";
+      personas = 4;
+      invFija = 200;
+      costeTurnoFijo = 90;
+    } else if (cod === "C") {
+      nombre = "Opción C (Módulo Prep.)";
+      teC = TE_C_OPT_C;
+      f1 = 0.02;
+      invFija = 200;
+      costeVarEntrada = 0.60;
+    }
+
+    const recup = 0.80;
+    const yEsperado = (1 - f1) + (f1 * recup); // 0.98 en REF/A/B; 0.996 en C
+    const freqC = r + f1;
+    const freqPrueba = 1 + f1;
+    const freqE = yEsperado;
+
+    let cargas = [];
+    if (cod === "B") {
+      cargas = [
+        { puesto: "P1 (B)", valor: 1.0 * teB },
+        { puesto: "P2 (C)", valor: freqC * teC },
+        { puesto: "P3/Banco (Pruebas)", valor: freqPrueba * TE_PRUEBA },
+        { puesto: "P4 (A+E)", valor: (1.0 * TE_A) + (freqE * TE_E) }
+      ];
+    } else {
+      cargas = [
+        { puesto: "P1 (A+B)", valor: (1.0 * TE_A) + (1.0 * teB) },
+        { puesto: "P2 (C+E)", valor: (freqC * teC) + (freqE * TE_E) },
+        { puesto: "P3/Banco (Pruebas)", valor: freqPrueba * TE_PRUEBA }
+      ];
+    }
+
+    // Identificar cuello de botella
+    let cuello = cargas[0];
+    for (let i = 1; i < cargas.length; i++) {
+      if (cargas[i].valor > cuello.valor) cuello = cargas[i];
+    }
+
+    const capEntrada = Math.floor(segNetos / cuello.valor);
+    const salidaBuenaMax = capEntrada * yEsperado;
+    const nReq = demanda === 0 ? 0 : Math.ceil(demanda / yEsperado);
+
+    // Validaciones de factibilidad
+    let razones = [];
+    if (nReq > capEntrada) razones.push(`Capacidad insuficiente (N_req=${nReq} > Cap=${capEntrada})`);
+    if (nReq > MAX_DISPONIBLE) razones.push(`Excede suministro máximo (N_req=${nReq} > 300 mandos)`);
+    if (yEsperado + 1e-9 < yMin) razones.push(`Rendimiento (${(yEsperado*100).toFixed(2)}%) < mínimo exigido (${(yMin*100).toFixed(2)}%)`);
+
+    const esFactible = razones.length === 0;
+    const costeIncremental = (invFija / TURNOS_AMORT) + costeTurnoFijo + (costeVarEntrada * nReq);
+
+    // Productividad en buenos esperados / hora-persona usando plan realizable (N_req si es viable)
+    const horasPersona = (segNetos / 3600) * personas;
+    const buenosPlan = nReq * yEsperado;
+    const productividad = esFactible ? (buenosPlan / horasPersona) : 0;
+
+    return {
+      cod, nombre, cargas, cuello, capEntrada, salidaBuenaMax, yEsperado,
+      nReq, esFactible, razones, costeIncremental, productividad, r, f1, personas
+    };
+  }
+
+  function calcular() {
+    const errBox = document.getElementById("errorBox");
+    errBox.style.display = "none";
+    errBox.textContent = "";
+
+    const rawDemanda = document.getElementById("demanda").value;
+    const rawMinutos = document.getElementById("minutos").value;
+    const rawR = document.getElementById("r_mod").value;
+    const rawYmin = document.getElementById("y_min").value;
+    const opcion = document.getElementById("opcion").value;
+
+    // Validación estricta sin convertir silenciosamente a cero
+    if (rawDemanda === "" || rawMinutos === "" || rawR === "" || rawYmin === "") {
+      mostrarError("Entrada inválida: Ningún campo numérico puede estar vacío.");
+      return;
+    }
+
+    const demanda = Number(rawDemanda);
+    const minutos = Number(rawMinutos);
+    const r = Number(rawR);
+    const yMin = Number(rawYmin);
+
+    if (!Number.isInteger(demanda) || demanda < 0) {
+      mostrarError("Entrada inválida: La demanda buena debe ser un número entero no negativo (≥ 0).");
+      return;
+    }
+    if (isNaN(minutos) || minutos <= 0) {
+      mostrarError("Entrada inválida: Los minutos netos por turno deben ser estrictamente positivos (> 0).");
+      return;
+    }
+    if (isNaN(r) || r < 0 || r > 1) {
+      mostrarError("Entrada inválida: La proporción inicial de ruta M (r) debe estar entre 0 y 1.");
+      return;
+    }
+    if (isNaN(yMin) || yMin < 0 || yMin > 1) {
+      mostrarError("Entrada inválida: El rendimiento mínimo (y_min) debe estar entre 0 y 1.");
+      return;
+    }
+
+    const segNetos = minutos * 60;
+    const res = evaluarAlternativa(opcion, demanda, segNetos, r, yMin);
+
+    // Actualizar KPIs
+    const kpiFact = document.getElementById("kpiFactible");
+    kpiFact.innerHTML = res.esFactible
+      ? `<span class="badge badge-ok">VIABLE</span>`
+      : `<span class="badge badge-err">NO FACTIBLE</span>`;
+
+    document.getElementById("kpiCuello").textContent = `${res.cuello.puesto}: ${res.cuello.valor.toFixed(2)} s`;
+    document.getElementById("kpiCap").textContent = `${res.capEntrada} ent / ${res.salidaBuenaMax.toFixed(2)} b`;
+    document.getElementById("kpiNreq").textContent = `${res.nReq} mandos`;
+    document.getElementById("kpiCoste").textContent = `${res.costeIncremental.toFixed(2)} €`;
+    document.getElementById("kpiProd").textContent = res.esFactible ? `${res.productividad.toFixed(2)}` : "N/A (No viable)";
+    document.getElementById("motivoInviable").textContent = res.esFactible ? "" : "Motivo de inviabilidad: " + res.razones.join(" | ");
+
+    // Actualizar Árbol de Cantidades Esperadas para N_req
+    const N = res.nReq;
+    const cantL = N * (1 - r);
+    const cantM = N * r;
+    const cantRetrabajo = N * res.f1;
+    const cantBuenos = N * res.yEsperado;
+    const cantDescarte = N - cantBuenos;
+
+    document.getElementById("tablaArbol").innerHTML = `
+      <tr>
+        <td><strong>${N}</strong></td>
+        <td>${cantL.toFixed(2)}</td>
+        <td>${cantM.toFixed(2)}</td>
+        <td>${N.toFixed(2)}</td>
+        <td>${cantRetrabajo.toFixed(2)}</td>
+        <td><strong>${cantBuenos.toFixed(2)}</strong></td>
+        <td>${cantDescarte.toFixed(2)}</td>
+        <td><strong>${(res.yEsperado * 100).toFixed(2)}%</strong></td>
+      </tr>
+    `;
+
+    // Actualizar Tabla Comparativa
+    const opciones = ["REF", "A", "B", "C"];
+    let htmlComp = "";
+    opciones.forEach(op => {
+      const alt = evaluarAlternativa(op, demanda, segNetos, r, yMin);
+      const cls = op === opcion ? "class='highlight-row'" : "";
+      const badge = alt.esFactible
+        ? `<span class="badge badge-ok">SÍ</span>`
+        : `<span class="badge badge-err">NO</span>`;
+      htmlComp += `
+        <tr ${cls}>
+          <td>${alt.nombre}</td>
+          <td>${alt.cuello.puesto} (${alt.cuello.valor.toFixed(2)} s)</td>
+          <td>${alt.capEntrada}</td>
+          <td>${alt.salidaBuenaMax.toFixed(2)}</td>
+          <td>${(alt.yEsperado * 100).toFixed(2)}%</td>
+          <td>${alt.nReq}</td>
+          <td>${badge}</td>
+          <td>${alt.costeIncremental.toFixed(2)} €</td>
+        </tr>
+      `;
+    });
+    document.getElementById("tablaComparativa").innerHTML = htmlComp;
+  }
+
+  function mostrarError(msg) {
+    const errBox = document.getElementById("errorBox");
+    errBox.textContent = msg;
+    errBox.style.display = "block";
+  }
+
+  function resetBase() {
+    document.getElementById("opcion").value = "REF";
+    document.getElementById("demanda").value = "196";
+    document.getElementById("minutos").value = "420";
+    document.getElementById("r_mod").value = "0.30";
+    document.getElementById("y_min").value = "0.98";
+    calcular();
+  }
+
+  // Inicializar al cargar
+  calcular();
+</script>
+</body>
+</html>
